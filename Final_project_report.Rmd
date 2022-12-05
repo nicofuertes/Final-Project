@@ -1,0 +1,181 @@
+---
+title: "Building an Alcohol Consumption Prediction Model"
+subtitle: "Using Machine Learning Models to Predict Alcohol Consumption among Teenagers in Colombia"
+author: "Nicolás Fuertes Segura"
+date: '2022-12-7 - UCSB Fall 2022'
+output:
+    html_document:
+      toc: true
+      toc_float: true
+      code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warning = FALSE)
+```
+
+<center>
+![](Images/Flag.png){width="300"}
+![](Images/Alcohol.jpeg){width="200"}
+
+</center>
+
+# Introduction
+
+The aim of this project is to build a machine learning model that accurately predicts whether or not a teenager in Colombia has tried alcohol in the past. For this project, I will use data from the largest longitudinal survey in Colombia and I will implement different models and techniques to provide the most accurate model for this classification model given that the outcome variable is binary.
+
+**Loading Packages and Setting Up The Environment**
+
+```{r}
+
+# For the models
+library(tidyverse)
+library(tidymodels)
+library(discrim)
+library(rpart.plot)
+library(ranger)
+library(vip)
+library(xgboost)
+library(randomForest) 
+
+# For plots, graphs and EDA
+
+library(ggplot2)
+library(ggpubr)
+library(corrplot)
+library(corrr)
+
+# Data cleaning
+
+library(janitor)
+library(dplyr)
+```
+
+## Where is Colombia and what are the alcohol consumption patterns?
+
+Colombia is located in the north of South America (as seen in the map below). It is a country with a well-known history of internal armed conflict and is the only country in South America with access to both oceans (Pacific and Atlantic). Society widely accepts alcohol consumption and the social norms around it are such that young kids start drinking alcoholic beverages at an early age. Sometimes this consumption is promoted in the household by the parents of the children or in the neighborhood or school by friends. According to the official statistics in 2019, 84% of people 12-65 reported having tried alcohol. The same report found that for people officially enrolled in the educational system, 70.4% of the female students and 68.1% of the male students reported having tried alcohol, indicating how alcohol consumption among teenagers is widely accepted in the country. Even more, there is evidence that, on average, kids tend to try alcohol for the first time at 13 years of age.
+
+
+<center>
+![](Images/ColombiaMap.png){width="300"}
+</center>
+
+## Why is this model relevant?
+
+Alcohol consumption is related to risky behaviors and crime in Colombia. For example, interpersonal violence is more common when people are under the influence of alcohol. Also, driving under the influence remains a problem in some areas of the country, especially the rural areas. Finally, according to the Ministry of Health and Social Protection, 28.35% of the people who committed suicide in the country had alcohol addiction problems. From the public policy perspective, it would be essential to analyze teenagers' risk factors for them to properly develop the correct public policies and programs to prevent the negative consequences of alcohol consumption. The Ministry of Health and Social Protection has prevention programs, but they cannot fully target the correct population subgroup. I want to create a model that can accurately predict the likelihood of trying alcohol. Still, it also can provide the risk factors that the government should consider when designing the programs. By doing so, I hope to improve the statistical capacity of the Ministry and provide them with helpful tools that can improve public policy regarding such an important topic for the country and the lives of Colombian teenagers.
+
+
+## Project Roadmap and Data
+
+As I explained previously, given Colombia's social norms and the question's relevance, I will implement Machine Learning tools to build a model that allows us to predict alcohol consumption among teenagers. The goal of the model will be to predict two different binary variables: i) a binary variable that represents whether a teenager has tried alcohol or not, and ii) a binary variable that indicates whether a teenager tried alcohol early on (before 13 years old) or not. For this, I will go through 5 different tasks. First, I will clean the data to ensure the variables and information are ready to use. Second, I will perform some exploratory data analysis to provide insights about the data, the variables, and the relationship among them. Third, I will split the data into training and test set and follow the usual steps (recipe, workflow, folds, etc.) to implement the following models: logistic regression, LDA, QDA, Lasso, Decision Tree, Random Forest, and K-Nearest Neighbor in the training set. Fourth, I will evaluate the performance of the models to choose the best one. Fifth, I will fit the selected model in step 4 on the testing set to assess its performance.
+
+For this project, I am using the largest longitudinal survey in Colombia. The survey includes three waves from 2010, 2013, and 2016. It has questions about the households' characteristics, children's outcomes, and parents' outcomes in every single wave. The data is publicly available to download from https://encuestalongitudinal.uniandes.edu.co/es/. However, I will be using some restricted-use information in this project. 
+
+Let's start by opening the data:
+
+```{r}
+# Open ELCA data
+ELCA <- read_csv("Data/ELCA_data.csv")
+
+# Getting the dimensions of our data 
+dim(ELCA) 
+```
+
+As we can observe, for this project, I will use the information for 4211 teeangers in Colombia that are representative of both urban and rural areas of the country.The data set includes 256 different variables that could potentially be used as predictors but I will only use those that are in theory more likely to be related to alcohol consumption.
+
+
+# Data Cleaning
+
+Given that I am using survey data, it is important to make sure everything is ready to be used and that the data is coded appropriately. For example, I need to make sure that all the factor variables are properly set, that missing values are treated properly, and that the binary variables are set correctly. In this section, I will make all the necessary data cleaning before we can actually start using the data.
+
+First, we will need to clean the names and select the predictors that we think will be useful in the analysis. I selected the predictors based on my knowledge as a Health Economist and my experience working with alcohol consumption patterns and data in Colombia.
+
+```{r}
+# Clean the names
+ELCA <- ELCA %>% 
+  clean_names()
+
+# Select necessary variables and show them
+ELCA <- ELCA %>% 
+  select(ha_bebido, edad_bebe, sexo, educ, orden_nino, edad_padres, educ_padres, biparental_2010,
+         ln_t_anual_2010, t_personas_2010, zona_2010, probado_cigarro, pertenece_pandilla)
+
+ELCA %>%
+  head()
+```
+
+Now we can factor all the categorical/dummy variables as needed and make sure we drop the teenagers who refuse to answer the risky behaviors questions:
+
+```{r}
+# Factor all the necessary variables
+ELCA_clean <- ELCA %>% 
+  mutate(ha_bebido = factor(ha_bebido), probado_cigarro = factor(probado_cigarro), pertenece_pandilla = factor(pertenece_pandilla), sexo = factor(sexo), orden_nino = factor(orden_nino), biparental_2010 = factor(biparental_2010), zona_2010 = factor(zona_2010))
+
+# Find missing values in the three main variables about risky behaviors
+missing_alcohol <- ggplot(ELCA_clean) + geom_bar(aes(x = ha_bebido), colour = 'navyblue', fill = 'light blue') + labs(title = "Tried Alcohol", y = '# of teenagers', x = '')
+
+missing_smoking <- ggplot(ELCA_clean) + geom_bar(aes(x = probado_cigarro), colour = 'navyblue', fill = 'light blue') + labs(title = "Tried smoking", y = '# of teenagers', x = '')
+
+missing_gangs <- ggplot(ELCA_clean) + geom_bar(aes(x = pertenece_pandilla), colour = 'navyblue', fill = 'light blue') + labs(title = "Member of a gang", y = '# of teenagers', x = '')
+
+figure <- ggarrange(missing_alcohol, missing_smoking, missing_gangs,
+                    labels = c("A", "B", "C"),
+                    ncol = 3, nrow = 1)
+figure
+```
+
+Therefore, we will filter the data set to include only the teenagers that answer all three of the questions as follows:
+
+```{r}
+# Keep the observation that meet the needed requirements
+ELCA_clean <- ELCA_clean %>% 
+  filter(ha_bebido %in% c('Yes', 'No')) %>% 
+  filter(probado_cigarro %in% c('Yes', 'No')) %>% 
+  filter(pertenece_pandilla %in% c('Yes', 'No'))
+
+# Getting the dimensions of our final data 
+dim(ELCA_clean) 
+```
+
+Therefore, we have information for 4161 teenagers and for 13 variables. Now we are ready to create our second outcome variable using the information on `edad_bebe`:
+
+```{r}
+# Create variable
+ELCA_clean$bebe_joven <- ifelse(ELCA_clean$edad_bebe < 13, 1, 0)
+
+# Check it was created properly
+table(ELCA_clean$edad_bebe, ELCA_clean$bebe_joven)
+```
+
+The table shows that the binary variable was created properly and now we are ready to start working with some EDA to understand a little bit more about the data. The final list of variables to be use is the following:
+
+* Response variable:
+  + `ha_bebido`: Gives 1 if the teenager has tried alcohol, 0 otherwise
+  + `bebe_joven`: Gives 1 if the teenager has tried alcohol before 13 years old, 0 otherwise
+
+* Predictors:
+  + `sexo`: Gives 1 if the teenager is male, 0 otherwise
+  + `educ`: Years of education of the teenager
+  + `orden_nino`: Order of the teenager among all the children in the household (e.g. firstborn will be 1)
+  + `edad_padres`: Age of the parents (mother in most cases)
+  + `educ_padres`: Years of education of the parents (mother in most cases)
+  + `biparental_2010`: Gives 1 if the household includes both parents, 0 otherwise
+  + `ln_t_anual_2010`: Logarithm of the total annual income
+  + `t_personas_2010`: Household size
+  + `zona_2010`: Gives 1 if the household lives in urban area, 0 otherwise (rural)
+  + `probado_cigarro`: Gives 1 if the teenager has tried smoking, 0 otherwise
+  + `pertenece_pandilla`: Gives 1 if the teenager belongs to a gang, 0 otherwise
+  
+# Exploratory Data Analysis
+
+It is important for us to understand the information included in the dataset and the relationship among the variables before trying to implement any of the models. In this section, I will analyze some of the key variables using visualizations and other functions.
+
+
+
+
+
+
+
+
+
