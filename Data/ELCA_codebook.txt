@@ -1,0 +1,13 @@
+ha_bebido: Gives 1 if the teenager has tried alcohol, 0 otherwise
+edad: Age of the teenager
+sexo: Gives 1 if the teenager is male, 0 otherwise
+educ: Years of education of the teenager
+edad_padres: Age of the parents (mother in most cases)
+educ_padres: Years of education of the parents (mother in most cases)
+biparental_2010: Gives 1 if the household includes both parents, 0 otherwise
+ln_t_anual_2010: Logarithm of the total annual income
+t_personas_2010: Household size (Number of people in the household)
+zona_2010: Gives 1 if the household lives in urban area, 0 otherwise (rural)
+probado_cigarro: Gives 1 if the teenager has tried smoking, 0 otherwise
+pertenece_pandilla: Gives 1 if the teenager belongs to a gang, 0 otherwise
+t_anual_2010: Total annual income in levels (colombian pesos)

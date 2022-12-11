@@ -846,9 +846,9 @@ The table above clearly shows that the best performing model was the elastic net
 
 # Results on the testing set
 
-The Elastic Net model with `mixture = 0`  and  `penalty = 0.2782559` has been selecte as the best performing out of all the models that we estimated in the project. In this section, I will analyze how this model performs in the testing set to analyze its performance.
+The Elastic Net model with `mixture = 0`  and  `penalty = 0.2782559` has been selected as the best performing out of all the models that we estimated in the project. In this section, I will analyze how this model performs in the testing set to analyze its performance.
 
-I will use to metrics to asses it. The accuracy and the ROC curves
+I will use two metrics to asses it: The accuracy and the ROC curves
 
 ## Accuracy
 
@@ -861,11 +861,11 @@ predict_actual <- predict %>% bind_cols(ELCA_test$ha_bebido)
 accuracy <- predict_actual %>% accuracy(truth = ...2, estimate = .pred_class)
 accuracy
 ```
-The results indicate hat 0.692 of the observations in the test sample were correctly predicted by the model. This model is not that high but high enough. It means we would like more information or observations to train the model such that we can make more accurate predictions
+The results indicate hat 0.692 of the observations in the test sample were correctly predicted by the model. This model is not that high but high enough. It means we would like more information or observations to train the model such that we can make more accurate predictions. 
 
 ## ROC Results
 
-Now let's about the ROC which was the metric that we chose to evaluate the performance of the models. First, let's check the curve
+Now let's check the ROC_AUC which was the metric that we chose to evaluate the performance of the models. First, let's check the curve
 
 ```{r}
 # Compute ROC Curve in the test data set
@@ -881,14 +881,13 @@ roc_auc <- augment(elastic_final_fit, new_data = ELCA_test) %>%
 roc_auc
 ```
 
-The ROC curve confirms that the model is good but not completely perfect. It does a good job with most of the observations but with other it is not very good. The `roc_auc` metric is equal to 0.713 which is slightly lower thant the one in the training data but not a reason to worry about the model. Now we can check the confusion matrix to understand more the results
+The ROC curve confirms that the model is good but not completely perfect. It does a good job with most of the observations but with other it is not very good. The `roc_auc` metric is equal to 0.713 which is slightly lower than the one in the training data but not a reason to worry about the model. Now we can check the confusion matrix to understand more the results
 
 ```{r}
 augment(elastic_final_fit, new_data = ELCA_test) %>% conf_mat(truth = ha_bebido, estimate = .pred_class) %>% autoplot(type = "heatmap")
 ```
 
 As expected most of the observations were accurately classified but there are 75 and 172 observations that were assigned to the opposite group. This implies the model was  accurate (but not enough) at predicting most of the observations.
-
 
 # Conclusion
 
