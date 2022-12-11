@@ -2766,11 +2766,11 @@ value for <code>cost_complexity</code>.</p>
 <div id="results-on-the-testing-set" class="section level1">
 <h1>Results on the testing set</h1>
 <p>The Elastic Net model with <code>mixture = 0</code> and
-<code>penalty = 0.2782559</code> has been selecte as the best performing
-out of all the models that we estimated in the project. In this section,
-I will analyze how this model performs in the testing set to analyze its
-performance.</p>
-<p>I will use to metrics to asses it. The accuracy and the ROC
+<code>penalty = 0.2782559</code> has been selected as the best
+performing out of all the models that we estimated in the project. In
+this section, I will analyze how this model performs in the testing set
+to analyze its performance.</p>
+<p>I will use two metrics to asses it: The accuracy and the ROC
 curves</p>
 <div id="accuracy" class="section level2">
 <h2>Accuracy</h2>
@@ -2788,11 +2788,11 @@ accuracy</code></pre>
 <p>The results indicate hat 0.692 of the observations in the test sample
 were correctly predicted by the model. This model is not that high but
 high enough. It means we would like more information or observations to
-train the model such that we can make more accurate predictions</p>
+train the model such that we can make more accurate predictions.</p>
 </div>
 <div id="roc-results" class="section level2">
 <h2>ROC Results</h2>
-<p>Now let’s about the ROC which was the metric that we chose to
+<p>Now let’s check the ROC_AUC which was the metric that we chose to
 evaluate the performance of the models. First, let’s check the curve</p>
 <pre class="r"><code># Compute ROC Curve in the test data set
 roc_curve &lt;- augment(elastic_final_fit, new_data = ELCA_test) %&gt;%
@@ -2811,7 +2811,7 @@ roc_auc</code></pre>
 <p>The ROC curve confirms that the model is good but not completely
 perfect. It does a good job with most of the observations but with other
 it is not very good. The <code>roc_auc</code> metric is equal to 0.713
-which is slightly lower thant the one in the training data but not a
+which is slightly lower than the one in the training data but not a
 reason to worry about the model. Now we can check the confusion matrix
 to understand more the results</p>
 <pre class="r"><code>augment(elastic_final_fit, new_data = ELCA_test) %&gt;% conf_mat(truth = ha_bebido, estimate = .pred_class) %&gt;% autoplot(type = &quot;heatmap&quot;)</code></pre>
