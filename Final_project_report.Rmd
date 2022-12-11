@@ -576,7 +576,7 @@ We will analyze the results and check the performance of the model in the next s
 
 ### Elastic Net
 
-The fourth model is an elastic net in which we tune `penalty` and `mixture` in the usual way using the recipe and resampling the data using the folds as we did in Homework 5. Given that I have 10 folds, it means I am estimating each model 10 times. However, I also have 10 levels for each of the hyperparameters which means I have 100 different possible combinations of models and each of them has to run 10 times. Therefore, I will run 1000 models 
+The fourth model is an elastic net in which we tune `penalty` and `mixture` in the usual way using the recipe and resampling the data using the folds as we did in Homework 5. Given that I have 10 folds, it means I am estimating each model 10 times. However, I also have 10 levels for each of the hyperparameters which means I have 100 different possible combinations of models and each of them has to run 10 times. Therefore, I will run 1000 models. 
 
 ```{r class.source = 'fold-show'}
 # Specify elastic net model
@@ -624,7 +624,7 @@ The plots show that having a low `mixture` (represented by the Proportion of Las
 
 ### Decision Tree
 
-The fifth model is a decision tree in which we tune `cost_complexity` in the usual way using the recipe and resampling the data using the folds as we did in Homework 6. Given that I have 10 folds, it means I am estimating each model 10 times. However, I also have 10 levels for the hyperparameter. Therefore, I will run 100 models 
+The fifth model is a decision tree in which we tune `cost_complexity` in the usual way using the recipe and resampling the data using the folds as we did in Homework 6. Given that I have 10 folds, it means I am estimating each model 10 times. However, I also have 10 levels for the hyperparameter. Therefore, I will run 100 models.
 
 ```{r}
 # Specify decision tree model
@@ -681,8 +681,6 @@ The graph shows that the ROC-AUC is high for the `cost_complexity` hyperparamete
 
 The sixth model is a decision in which we tune `mtry`, `trees`, and `min_n` in the usual way using the recipe and resampling the data using the folds as we did in Homework 6. Given that I have 10 folds, it means I am estimating each model 10 times. However, I also have 5 levels for each of the hyperparameters which means I have 125 different possible combinations of models and each of them has to run 10 times. Therefore, I will run 1250 models. For the random forest, I only use 5 levels for each hyperparameter so it can run properly.
 
-**NOTE: This model is still running so the results are not here now in this draft, but they will be in the final version**
-
 ```{r, eval=FALSE}
 # Specify random forest  model
 rf_spec <- rand_forest() %>%
@@ -696,13 +694,13 @@ class_rf_wf <- workflow() %>%
   add_recipe(ELCA_recipe)
 
 # Set grid with values of `cost_complexity`, and levels
-param_rf_grid <- grid_regular(mtry(range = c(1, 10)), trees(range = c(10, 2000)), min_n(range = c(2, 16)), levels = 10)
+param_rf_grid <- grid_regular(mtry(range = c(1, 10)), trees(range = c(10, 2000)), min_n(range = c(2, 16)), levels = 5)
 
 # Fit models to folded data using `tune_grid()`
 tune_rf <- tune_grid(
   class_rf_wf, 
   resamples = ELCA_folds, 
-  grid = param_rf_grid, 
+  grid = param_rf_grid,
   metrics = metric_set(roc_auc)
 )
 
@@ -712,7 +710,7 @@ save(tune_rf, class_rf_wf, file = "Results/RF.rda")
 
 Now we need to choose the best model and finalize the workflow with those hyperparameters. We will also check the autoplots to understand how the tuning affects the results.
 
-```{r, eval=FALSE}
+```{r}
 # Load data saved
 load("Results/RF.rda")
 
@@ -720,7 +718,7 @@ load("Results/RF.rda")
 autoplot(tune_rf)
 
 # Select best model
-best_parameters <- select_best(tune_rf_saved)
+best_parameters <- select_best(tune_rf)
 best_parameters
 
 # Fit the selected model
@@ -733,12 +731,18 @@ rf_final_fit <- extract_fit_parsnip(class_rf_final_fit)$fit
 # Importance plot
 vip(rf_final_fit)
 ```
+The plot shows tha:
+- For `mtry`, it shows that the ROC-AUC is the highest for the smallest possible value. This is possibly related to the age of the teenager being a really important predictor. The plot suggest that `mtry = 1` yields the best performance overall all the models accounting for the values of the other two hyperparameters (`trees` and `min_n`)
 
-Missing text 
+- For `trees` we know that we want enough of them so that we can have a stable error but we don't want to have too many as it would be inefficient and would harm our estimations. The plot clearly shows that having way too little trees (less than a 500) or way too much (more than 1000) impacts the results and yields lower ROC-AUC. In this case, the plot suggest that having `trees = 507` yields the best performance overall all the models accounting for the values of the other two hyperparameters (`mtry` and `min_n`)
+
+- For `min_n` we know that a small number of observations in the node to split would produce a deeper and more complex trees which would potentially overfit the data, but having too many observations in the node would create a smaller tree that could be bias and not useful at all. So for this hyperparameter we also need a high enough value. Therefore, `min_n = 12` yields the best performance overall all the models accounting for the values of the other two hyperparameters (`mtry` and `trees`)
+
+Overall, the results suggest that `mtry = 1`, `trees = 507`, and `min_n = 12` yield the best model. The variable importance plot confirms the results so far that suggest that `edad` and `educ` are the most useful while `sexo` and `biparental_2010` are the least useful. The most useful ones results are not surprising as it makes a lot of sense that age is an important factor driving the results. However, as a Colombian, it is surprising to see that the gender is not very useful as the alcohol consumption patterns are different between male and female. Even more, social norms are such that society does not approve female alcohol consumption. This raises questions about a potential generational change.
 
 ### Boosted Tree
 
-The seventh model is a booted tree in which we tune `trees` in the usual way using the recipe and resampling the data using the folds as we did in Homework 6. Given that I have 10 folds, it means I am estimating each model 10 times. However, I also have 10 levels for the hyperparameter. Therefore, I will run 100 models 
+The seventh model is a booted tree in which we tune `trees` in the usual way using the recipe and resampling the data using the folds as we did in Homework 6. Also, following the suggestion given in the feedback, I will also tune the `learn_rate` Given that I have 10 folds, it means I am estimating each model 10 times. However, I also have 10 levels for each of the hyperparameters which means I have 100 different possible combinations of models and each of them has to run 10 times. Therefore, I will run 1000 models. 
 
 ```{r}
 # Specify decision tree model
@@ -749,11 +753,11 @@ class_boost_spect <- boost_spec %>%
 
 # Create a workflow for the model
 class_boost_wf <- workflow() %>% 
-  add_model(class_boost_spect %>% set_args(trees = tune())) %>% 
+  add_model(class_boost_spect %>% set_args(trees = tune(), learn_rate = tune())) %>% 
   add_recipe(ELCA_recipe)
 
 # Set grid with values of `trees`, and levels
-param_boost_grid <- grid_regular(trees(range = c(10, 2000)), levels = 10)
+param_boost_grid <- grid_regular(trees(range = c(10, 2000)), learn_rate(range = c(0.1, 0.4)), levels = 10)
 
 # Fit models to folded data using `tune_grid()`
 tune_boost <- tune_grid(
@@ -785,8 +789,9 @@ class_boost_final <- finalize_workflow(class_boost_wf, best_boost)
 class_boost_final_fit <- fit(class_boost_final, data = ELCA_train)
 ```
 
-The graph shows that the ROC-AUC is high for the small values of `tress` hyperparameter.It shows that having way too many trees will possibly lead to overfitting and a smaller `roc_auc`. For this model, we actually need a small number of trees such that we can have a good performance. The best model is the one with `trees = 10`. We will analyze the results and check the performance of the model in the next section so we can compare across all the models.
+The graph shows that the ROC-AUC is high for the small values of `tress` hyperparameter. It shows that having way too many trees will possibly lead to overfitting and a smaller `roc_auc`. For this model, we actually need a small number of trees such that we can have a good performance. Now regarding the `learn_rate`, we know that having a slower learn rate will improve the performance of the model. Indeed, we observe that the model has a better performance when that is the case.
 
+Thefrefore, the best model is the one with `trees = 10` and `learn_rate = 1.258925`. We will analyze the results and check the performance of the model in the next section so we can compare across all the models.
 
 # Model Performance
 
@@ -803,6 +808,9 @@ elastic_roc <- collect_metrics(tune_elastic) %>%
 tree_roc <- collect_metrics(tune_res) %>% 
   arrange(-mean) %>% 
   head(1)
+rf_roc <- collect_metrics(tune_rf) %>%
+  arrange(-mean)  %>% 
+  head(1)
 boost_roc <- collect_metrics(tune_boost) %>%
   arrange(-mean)  %>% 
   head(1)
@@ -812,11 +820,12 @@ Now I can create a tibble combining all the information and display it so we can
 
 ```{r}
 # Tibble with the results
-roc_aucs <- c(log_roc$mean,
+roc_aucs_means <- c(log_roc$mean,
               lda_roc$mean,
               qda_roc$mean,
               elastic_roc$mean,
               tree_roc$mean,
+              rf_roc$mean,
               boost_roc$mean)
 
 mod_names <- c("Logistic Regression",
@@ -824,15 +833,16 @@ mod_names <- c("Logistic Regression",
             "QDA",
             "Elastic Net",
             "Decision Tree",
+            "Random Forest",
             "Boosted Tree")
 
 results <- tibble(Model = mod_names,
-                             ROC_AUC = roc_aucs)
+                             ROC_AUC = roc_aucs_means)
 results <- results %>% 
-  arrange(-roc_aucs)
+  arrange(-roc_aucs_means)
 results
 ```
-The table above clearly shows that the best performing model was the elastic net followed by the logistic regression. Therefore, the elastic net model is the one we will use from now on to fit in the testing data and analyze its performance on it. There are two things worth mentioning above the results. First, the models seem to have performed okay by obtaining ROC-AUC higher than 0.7 for most of them. Second, the single decision tree is the worst perfoming of all of them even with a small value for `cost_complexity`.
+The table above clearly shows that the best performing model was the elastic net followed by the logistic regression. Therefore, the elastic net model is the one we will use from now on to fit in the testing data and analyze its performance on it. There are two things worth mentioning above the results. First, the models seem to have performed okay by obtaining ROC-AUC higher than 0.7 for most of them. Second, the single decision tree is the worst performing of all of them even with a small value for `cost_complexity`.
 
 # Results on the testing set
 
